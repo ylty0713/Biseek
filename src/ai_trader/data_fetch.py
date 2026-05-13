@@ -1,17 +1,51 @@
-"""Data acquisition utilities (Binance endpoints)."""
+﻿"""Data acquisition utilities (Binance endpoints)."""
 
 from __future__ import annotations
 
-from typing import List, Dict
+import os
+from typing import Any
 
 import pandas as pd
 import requests
 
+HTTP_TIMEOUT = 10
+_SESSION = requests.Session()
+_disable_market_proxy = os.getenv("AI_TRADER_MARKET_TRUST_ENV_PROXY", "").strip().lower() in {"0", "false", "no"}
+_SESSION.trust_env = not _disable_market_proxy
+
+
+class DataFetchError(RuntimeError):
+    """Raised when upstream market data request fails."""
+
+
+def _get_json(label: str, url: str, params: dict[str, Any] | None = None) -> Any:
+    try:
+        response = _SESSION.get(url, params=params, timeout=HTTP_TIMEOUT)
+        response.raise_for_status()
+        return response.json()
+    except Exception as exc:
+        proxy_state = "enabled" if _SESSION.trust_env else "disabled"
+        raise DataFetchError(
+            f"{label} request failed: url={url}, params={params or {}}, "
+            f"env_proxy={proxy_state}, error={type(exc).__name__}: {exc}"
+        ) from exc
+
+
+def get_price(symbol: str) -> float:
+    payload = _get_json(
+        "spot price",
+        "https://api.binance.com/api/v3/ticker/price",
+        {"symbol": symbol.upper()},
+    )
+    return float(payload["price"])
+
 
 def get_kline(symbol: str, interval: str, limit: int = 200) -> pd.DataFrame:
-    url = "https://api.binance.com/api/v3/klines"
-    params = {"symbol": symbol, "interval": interval, "limit": limit}
-    data = requests.get(url, params=params, timeout=10).json()
+    data = _get_json(
+        "spot kline",
+        "https://api.binance.com/api/v3/klines",
+        {"symbol": symbol.upper(), "interval": interval, "limit": limit},
+    )
 
     df = pd.DataFrame(
         data,
@@ -22,57 +56,62 @@ def get_kline(symbol: str, interval: str, limit: int = 200) -> pd.DataFrame:
             "low",
             "close",
             "volume",
-            "_1",
-            "_2",
-            "_3",
-            "_4",
-            "_5",
-            "_6",
+            "close_time",
+            "quote_asset_volume",
+            "trade_count",
+            "taker_buy_base",
+            "taker_buy_quote",
+            "ignore",
         ],
     )
 
-    df["close"] = df["close"].astype(float)
-    df["volume"] = df["volume"].astype(float)
-    df["high"] = df["high"].astype(float)
-    df["low"] = df["low"].astype(float)
+    for col in ["open", "high", "low", "close", "volume"]:
+        df[col] = df[col].astype(float)
 
     return df
 
 
 def get_funding_rate(symbol: str = "BTCUSDT") -> float:
-    url = "https://fapi.binance.com/fapi/v1/fundingRate"
-    params = {"symbol": symbol, "limit": 1}
-    data = requests.get(url, params=params, timeout=10).json()
-
-    if isinstance(data, list) and len(data) > 0:
+    data = _get_json(
+        "funding rate",
+        "https://fapi.binance.com/fapi/v1/fundingRate",
+        {"symbol": symbol.upper(), "limit": 1},
+    )
+    if isinstance(data, list) and data:
         return float(data[-1]["fundingRate"])
     return 0.0
 
 
 def get_open_interest(symbol: str = "BTCUSDT") -> float:
-    url = "https://fapi.binance.com/fapi/v1/openInterest"
-    params = {"symbol": symbol}
-    data = requests.get(url, params=params, timeout=10).json()
+    data = _get_json(
+        "open interest",
+        "https://fapi.binance.com/fapi/v1/openInterest",
+        {"symbol": symbol.upper()},
+    )
     return float(data.get("openInterest", 0.0))
 
 
-def get_liquidations(symbol: str = "BTCUSDT") -> List[Dict[str, float | str]]:
-    url = "https://fapi.binance.com/fapi/v1/allForceOrders"
-    params = {"symbol": symbol, "limit": 50}
+def get_liquidations(symbol: str = "BTCUSDT", limit: int = 50) -> list[dict[str, float | str]]:
+    data = _get_json(
+        "liquidations",
+        "https://fapi.binance.com/fapi/v1/allForceOrders",
+        {"symbol": symbol.upper(), "limit": limit},
+    )
 
-    try:
-        data = requests.get(url, params=params, timeout=10).json()
-    except Exception:
-        return []
+    result: list[dict[str, float | str]] = []
+    if not isinstance(data, list):
+        return result
 
-    liquidations = []
     for item in data:
-        liquidations.append(
-            {
-                "price": float(item["avgPrice"]),
-                "side": item["side"],  # BUY or SELL
-                "qty": float(item["executedQty"]),
-            }
-        )
+        try:
+            result.append(
+                {
+                    "price": float(item["avgPrice"]),
+                    "side": item["side"],
+                    "qty": float(item["executedQty"]),
+                }
+            )
+        except Exception:
+            continue
 
-    return liquidations
+    return result

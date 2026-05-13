@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OracleScope</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1>OracleScope</h1>
+        <p>多预言机实时监控与市场偏差分析平台</p>
+      </div>
+      <section class="toolbar" aria-label="OracleScope controls">
+        <label>
+          Asset
+          <select id="assetSelect">
+            <option value="BTC">BTC/USD</option>
+            <option value="ETH">ETH/USD</option>
+          </select>
+        </label>
+        <label>
+          Refresh
+          <select id="refreshSelect">
+            <option value="5000">5s</option>
+            <option value="10000">10s</option>
+            <option value="30000">30s</option>
+          </select>
+        </label>
+        <button id="refreshBtn" type="button">Refresh</button>
+      </section>
+    </header>
+
+    <section class="hero-grid">
+      <article class="metric">
+        <span>Fair Market Price</span>
+        <strong id="fairPrice">--</strong>
+        <small id="fairSource">Waiting for real source</small>
+      </article>
+      <article class="metric">
+        <span>Max Deviation</span>
+        <strong id="maxDeviation">--</strong>
+        <small>Across connected sources</small>
+      </article>
+      <article class="metric">
+        <span>Worst Latency</span>
+        <strong id="worstLatency">--</strong>
+        <small>HTTP response + feed freshness</small>
+      </article>
+      <article class="metric">
+        <span>System Risk</span>
+        <strong id="riskLevel">--</strong>
+        <small id="riskHint">No active assessment</small>
+      </article>
+    </section>
+
+    <section class="workspace">
+      <section class="panel chart-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Oracle Price Path</h2>
+            <p id="chartStatus">Live real-data traces only. Missing connectors are not simulated.</p>
+          </div>
+        </div>
+        <canvas id="priceCanvas" width="1200" height="520"></canvas>
+      </section>
+
+      <aside class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>AI Risk Notes</h2>
+            <p>Deterministic summary for MVP; LLM hook reserved.</p>
+          </div>
+        </div>
+        <div id="aiNotes" class="notes">Waiting for source updates.</div>
+      </aside>
+    </section>
+
+    <section class="grid">
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Source Health</h2>
+            <p>CEX, Oracle, Perp DEX, and on-chain index connectors</p>
+          </div>
+        </div>
+        <div id="sourceCards" class="source-cards"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Deviation Matrix</h2>
+            <p>(Source Price - Fair Price) / Fair Price</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Type</th>
+                <th>Price</th>
+                <th>Deviation</th>
+                <th>Latency</th>
+                <th>Freshness</th>
+                <th>Health</th>
+              </tr>
+            </thead>
+            <tbody id="deviationRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Risk Events</h2>
+            <p>Deviation, stale feed, update interruption, and connector errors</p>
+          </div>
+        </div>
+        <div id="eventList" class="event-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Replay Lab</h2>
+            <p>Historical flash-crash replay module scaffold</p>
+          </div>
+        </div>
+        <div class="replay-box">
+          <button id="replayBtn" type="button">Replay last live window</button>
+          <span id="replayStatus">Collect at least two real snapshots to replay.</span>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

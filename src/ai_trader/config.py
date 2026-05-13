@@ -1,69 +1,74 @@
-"""Configuration utilities for the trading assistant.
-
-This module isolates reading/writing of the JSON config so other modules
-can stay pure and testable.
-"""
+﻿"""Configuration helpers for AI trader."""
 
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
-from typing import Any, Dict, Tuple
-
+from typing import Any
 
 CONFIG_FILE = Path("config.json")
 
 
-def load_config() -> Dict[str, Any]:
-    """Load user configuration from ``config.json`` if it exists.
-
-    Empty or malformed files return an empty config instead of crashing.
-    """
-
+def load_config() -> dict[str, Any]:
+    """Load JSON config; return empty dict on any parse/read error."""
     if not CONFIG_FILE.exists():
         return {}
-
     try:
-        content = CONFIG_FILE.read_text(encoding="utf-8").strip()
-        if not content:
+        raw = CONFIG_FILE.read_text(encoding="utf-8").strip()
+        if not raw:
             return {}
-        return json.loads(content)
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            return data
+        return {}
     except Exception:
-        # Be conservative: never let config loading take down the app.
         return {}
 
 
-def save_config(config: Dict[str, Any]) -> None:
-    """Persist the configuration to disk."""
-    CONFIG_FILE.write_text(json.dumps(config, indent=4), encoding="utf-8")
+def save_config(config: dict[str, Any]) -> None:
+    CONFIG_FILE.write_text(
+        json.dumps(config, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
 
 
-def get_api_key(config: Dict[str, Any], provider: str, prompt_fn=input) -> str:
-    """Fetch an API key from config or ask the user via ``prompt_fn``.
-
-    ``prompt_fn`` defaults to ``input`` but can be replaced for tests.
-    """
-
-    key_name = f"{provider}_api_key"
-
-    if key_name in config:
-        return config[key_name]
-
-    api_key = prompt_fn(f"🔑 请输入 {provider} API Key：")
-    config[key_name] = api_key
-    save_config(config)
-    return api_key
-
-
-def get_default_model(config: Dict[str, Any]) -> Tuple[str | None, str | None]:
-    """Return stored (provider, model) if present."""
-    if "default_model" in config and "provider" in config:
-        return config["provider"], config["default_model"]
+def get_default_model(config: dict[str, Any]) -> tuple[str | None, str | None]:
+    provider = config.get("provider")
+    model = config.get("default_model")
+    if isinstance(provider, str) and isinstance(model, str):
+        return provider, model
     return None, None
 
 
-def set_default_model(config: Dict[str, Any], provider: str, model: str) -> None:
-    """Persist the default model choice for the next session."""
+def set_default_model(config: dict[str, Any], provider: str, model: str) -> None:
+    for key in list(config):
+        if key.endswith("_api_key"):
+            config.pop(key, None)
     config["provider"] = provider
     config["default_model"] = model
     save_config(config)
+
+
+def _env_key_name(provider: str) -> str:
+    return "OPENAI_API_KEY" if provider == "openai" else f"{provider.upper()}_API_KEY"
+
+
+def get_api_key(
+    config: dict[str, Any],
+    provider: str,
+    prompt_if_missing: bool = True,
+    prompt_fn=input,
+) -> str | None:
+    """Resolve API key from env or prompt without persisting secrets to config."""
+    env_key = os.getenv(_env_key_name(provider), "").strip()
+    if env_key:
+        return env_key
+
+    if not prompt_if_missing:
+        return None
+
+    user_key = prompt_fn(f"Please input {provider} API key: ").strip()
+    if not user_key:
+        return None
+    return user_key

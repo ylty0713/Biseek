@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Market Sentinel</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <section class="brand">
+        <div class="mark" aria-hidden="true">A</div>
+        <div>
+          <h1>AI Market Sentinel</h1>
+          <p data-i18n="appSubtitle">统一市场监控、AI 对话与价格提醒控制台</p>
+        </div>
+      </section>
+      <section class="controls" aria-label="monitor controls">
+        <label>
+          <span data-i18n="asset">资产</span>
+          <select id="assetSelect">
+            <option value="BTC">BTC</option>
+            <option value="ETH">ETH</option>
+            <option value="SOL">SOL</option>
+          </select>
+        </label>
+        <label>
+          <span data-i18n="risk">风险偏好</span>
+          <select id="riskSelect">
+            <option value="balanced">均衡</option>
+            <option value="conservative">保守</option>
+            <option value="aggressive">激进</option>
+          </select>
+        </label>
+        <button class="icon-button" id="settingsBtn" type="button" title="设置" aria-label="设置">⚙</button>
+        <button class="icon-button" id="refreshBtn" type="button" title="刷新" aria-label="刷新">↻</button>
+      </section>
+    </header>
+
+    <section class="status-grid" aria-label="live status">
+      <article class="metric status-hot">
+        <span data-i18n="aiScore">AI 综合评分</span>
+        <strong id="scoreValue">--</strong>
+        <small id="scoreLabel">等待数据</small>
+      </article>
+      <article class="metric">
+        <span data-i18n="trend">趋势</span>
+        <strong id="trendValue">--</strong>
+        <small id="trendHint">等待数据</small>
+      </article>
+      <article class="metric">
+        <span data-i18n="onchain">链上压力</span>
+        <strong id="onchainValue">--</strong>
+        <small id="onchainHint">等待数据</small>
+      </article>
+      <article class="metric">
+        <span data-i18n="assistant">AI 助手</span>
+        <strong id="healthValue">--</strong>
+        <small id="healthHint">后端未检查</small>
+      </article>
+    </section>
+
+    <section class="workspace">
+      <section class="chart-panel">
+        <div class="panel-head">
+          <div>
+            <h2 data-i18n="klineStructure">K线结构</h2>
+            <p id="chartSubtitle">15m / 1h / 4h / 1d / 1w / 1M</p>
+          </div>
+          <div class="segmented" role="tablist" aria-label="timeframes">
+            <button class="active" data-timeframe="15m">15m</button>
+            <button data-timeframe="1h">1h</button>
+            <button data-timeframe="4h">4h</button>
+            <button data-timeframe="1d">1d</button>
+            <button data-timeframe="1w">1w</button>
+            <button data-timeframe="1M">1M</button>
+          </div>
+        </div>
+        <canvas id="klineCanvas" width="1100" height="520" aria-label="K-line chart"></canvas>
+        <div class="legend">
+          <span><i class="up"></i><span data-i18n="bullCandle">上涨实体</span></span>
+          <span><i class="down"></i><span data-i18n="bearCandle">下跌实体</span></span>
+          <span><i class="ma"></i>MA5/10/20/60</span>
+          <span><i class="ema"></i>EMA12/26</span>
+          <span><i class="boll"></i>BOLL</span>
+          <span><i class="rsi"></i>RSI</span>
+          <span><i class="macd"></i>MACD</span>
+        </div>
+      </section>
+
+      <aside class="decision-panel">
+        <div class="panel-head compact">
+          <div>
+            <h2>AI Trading Assistant</h2>
+            <p id="updatedAt">--</p>
+          </div>
+          <span id="regimeBadge" class="badge">--</span>
+        </div>
+        <div class="chat-box" id="assistantChat" aria-label="AI chat">
+          <div class="chat-message bot" id="marketSnapshotMsg">Building market state...</div>
+        </div>
+        <div class="assistant-input">
+          <input id="assistantInput" type="text" data-placeholder="askPlaceholder" placeholder="询问趋势、链上、衍生品、风险或提醒..." autocomplete="off">
+          <button id="assistantSendBtn" type="button" data-i18n="send">发送</button>
+        </div>
+      </aside>
+    </section>
+
+    <section class="analysis-grid">
+      <section class="analysis-band">
+        <div class="panel-head">
+          <div>
+            <h2 data-i18n="trendAnalysis">趋势分析</h2>
+            <p data-i18n="trendSub">多周期结构、方向和反转信号</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="tf">周期</th>
+                <th data-i18n="structure">结构</th>
+                <th data-i18n="trend">趋势</th>
+                <th data-i18n="reversal">反转信号</th>
+                <th data-i18n="confidence">置信度</th>
+              </tr>
+            </thead>
+            <tbody id="trendTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="analysis-band">
+        <div class="panel-head">
+          <div>
+            <h2 data-i18n="onchainData">链上数据</h2>
+            <p data-i18n="onchainSub">净流入/流出、活跃地址、巨鲸、筹码分布、MVRV、SOPR</p>
+          </div>
+        </div>
+        <div class="indicator-list" id="onchainList"></div>
+      </section>
+
+      <section class="analysis-band">
+        <div class="panel-head">
+          <div>
+            <h2 data-i18n="derivatives">衍生品</h2>
+            <p data-i18n="derivativesSub">资金费率、多空比、爆仓和未平仓</p>
+          </div>
+        </div>
+        <div class="indicator-list" id="derivativesList"></div>
+      </section>
+
+      <section class="analysis-band">
+        <div class="panel-head">
+          <div>
+            <h2 data-i18n="sentimentTraps">情绪与陷阱</h2>
+            <p data-i18n="sentimentSub">过热、恐慌、诱多、诱空检查</p>
+          </div>
+        </div>
+        <div class="emotion-meter">
+          <div class="meter-labels">
+            <span data-i18n="panic">恐慌</span>
+            <span data-i18n="neutral">中性</span>
+            <span data-i18n="hot">过热</span>
+          </div>
+          <div class="meter-track">
+            <div id="emotionNeedle" class="meter-needle"></div>
+          </div>
+        </div>
+        <div class="trap-box" id="trapBox">等待情绪模型输出。</div>
+      </section>
+
+      <section class="analysis-band">
+        <div class="panel-head">
+          <div>
+            <h2 data-i18n="priceAlerts">价格提醒</h2>
+            <p data-i18n="alertsSub">创建、取消和查看后端提醒</p>
+          </div>
+        </div>
+        <form class="inline-form" id="alarmForm">
+          <input id="alarmSymbol" placeholder="BTCUSDT">
+          <input id="alarmPrice" type="number" step="0.01" data-placeholder="targetPrice" placeholder="目标价格">
+          <select id="alarmDirection">
+            <option value="up">高于</option>
+            <option value="down">低于</option>
+          </select>
+          <button type="submit" data-i18n="create">创建</button>
+        </form>
+        <div class="indicator-list" id="alarmList"></div>
+      </section>
+
+      <section class="analysis-band">
+        <div class="panel-head">
+          <div>
+            <h2 data-i18n="connections">连接状态</h2>
+            <p id="connectionStatus">正在检查数据源...</p>
+          </div>
+        </div>
+        <div class="source-grid" id="sourceGrid"></div>
+      </section>
+
+      <section class="analysis-band oraclescope-entry">
+        <div class="panel-head">
+          <div>
+            <h2>OracleScope</h2>
+            <p>多预言机实时监控与市场偏差分析平台</p>
+          </div>
+          <a class="secondary-button link-button" href="/assets/oraclescope/index.html" target="_blank" rel="noreferrer">Open</a>
+        </div>
+        <div class="oraclescope-summary">
+          <span>CEX / DEX / Oracle / Index</span>
+          <span>Deviation</span>
+          <span>Latency</span>
+          <span>Health Score</span>
+          <span>AI Risk Notes</span>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="settingsDialog" class="settings-dialog">
+    <form method="dialog" class="settings-form" id="settingsForm">
+      <div class="panel-head">
+        <div>
+          <h2 data-i18n="systemSettings">系统设置</h2>
+          <p data-i18n="settingsHelp">LLM Key 会发送到本地后端；数据源设置保存在当前浏览器。</p>
+        </div>
+        <button class="icon-button" id="closeSettingsBtn" type="button" aria-label="关闭">×</button>
+      </div>
+
+      <section class="settings-grid">
+        <label><span data-i18n="language">语言</span><select id="languageSelect"><option value="zh">中文</option><option value="en">English</option></select></label>
+        <label><span data-i18n="autoRefresh">自动刷新</span><button class="toggle-button active" id="autoRefreshBtn" type="button" aria-pressed="true">自动刷新 1s</button></label>
+        <label><span data-i18n="analysisModel">分析模型</span><select id="modelSelect"><option value="balanced">综合均衡模型</option><option value="trend">趋势优先模型</option><option value="onchain">链上核心模型</option><option value="derivatives">衍生品风控模型</option></select></label>
+        <label><span data-i18n="llmProvider">LLM 服务商</span><select id="llmProviderSelect"><option value="deepseek">DeepSeek</option><option value="openai">OpenAI</option></select></label>
+        <label><span data-i18n="llmModel">LLM 模型</span><input id="llmModelInput" placeholder="deepseek-chat / gpt-4.1-mini"></label>
+        <label><span data-i18n="llmKey">LLM API Key</span><input id="llmApiKeyInput" type="password" autocomplete="off" placeholder="Only send when saving"></label>
+        <label><span data-i18n="marketProvider">行情源</span><select id="marketProviderSelect"><option value="binance">Binance 公共行情</option><option value="custom">自定义 K线 API</option></select></label>
+        <label><span data-i18n="onchainProvider">链上数据源</span><select id="onchainProviderSelect"><option value="mock">本地模拟链上</option><option value="custom">自定义 JSON API</option><option value="glassnode">Glassnode URL 模板</option></select></label>
+        <label><span data-i18n="derivativesProvider">衍生品数据源</span><select id="derivativesProviderSelect"><option value="binance">Binance Futures 公共数据</option><option value="mock">本地模拟衍生品</option><option value="custom">自定义 JSON API</option></select></label>
+      </section>
+
+      <section class="settings-grid">
+        <label><span data-i18n="dataKey">数据 API Key</span><input id="apiKeyInput" type="password" autocomplete="off" placeholder="Glassnode / CryptoQuant / custom key"></label>
+        <label><span data-i18n="customMarketUrl">自定义行情 API URL</span><input id="marketUrlInput" type="url" placeholder="https://api/kline?symbol={symbol}&tf={timeframe}&limit={limit}"></label>
+        <label><span data-i18n="customOnchainUrl">自定义链上 API URL</span><input id="onchainUrlInput" type="url" placeholder="https://api/onchain?asset={asset}&key={apiKey}"></label>
+        <label><span data-i18n="customDerivativesUrl">自定义衍生品 API URL</span><input id="derivativesUrlInput" type="url" placeholder="https://api/derivatives?asset={asset}&key={apiKey}"></label>
+        <label><span data-i18n="glassnodeTpl">Glassnode URL 模板</span><input id="glassnodeUrlInput" type="url" placeholder="https://api.glassnode.com/v1/metrics/..."></label>
+      </section>
+
+      <div class="settings-help">
+        <strong data-i18n="customFields">自定义 API 字段</strong>
+        <span>On-chain: exchangeNetflow, activeAddresses, whaleTransactions, supplyDistribution, mvrv, sopr</span>
+        <span>Derivatives: fundingRate, longShortRatio, liquidations, liquidationBias, openInterestChange</span>
+      </div>
+
+      <div class="settings-actions">
+        <button class="secondary-button" type="button" id="clearSettingsBtn" data-i18n="clearDataSettings">清除数据源设置</button>
+        <button class="toggle-button active" value="default" id="saveSettingsBtn" data-i18n="saveSettings">保存设置</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+  <script type="module" src="/assets/js/main.js"></script>
+</body>
+</html>

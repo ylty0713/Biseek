@@ -1,5 +1,8 @@
-﻿openai
+openai
+httpx
 python-dotenv
 pandas
 requests
 python-binance
+fastapi
+uvicorn
